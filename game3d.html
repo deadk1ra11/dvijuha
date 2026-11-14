@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Жизнь 3D</title>
+<style>
+body{margin:0;overflow:hidden;background:#222;font-family:sans-serif;touch-action:none}
+#hud{position:fixed;top:0;left:0;right:0;padding:6px;color:#fff;background:#0008;font-size:13px;z-index:2}
+#msg{position:fixed;left:8%;right:8%;top:30%;background:#000c;color:#fff;padding:12px;border-radius:10px;display:none;z-index:3;text-align:center}
+#ad{position:fixed;bottom:0;left:0;right:0;background:#07f;color:#fff;text-align:center;padding:10px;font-weight:bold;z-index:2}
+#net{position:fixed;top:40px;right:6px;color:#fff;z-index:2;font-size:13px}
+</style></head><body>
+<div id="hud"></div><div id="net"></div><div id="msg"></div>
+<div id="ad">СКАЧАЙ МАКС!</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const S={money:3000,salary:15000,sleep:100,nerve:100,day:1,hour:6,net:true,age:25,married:false};
+const R=new THREE.WebGLRenderer({antialias:true});
+R.setSize(innerWidth,innerHeight);document.body.appendChild(R.domElement);
+const sc=new THREE.Scene();sc.background=new THREE.Color(0x8899aa);
+sc.fog=new THREE.Fog(0x8899aa,20,70);
+const cam=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,100);
+sc.add(new THREE.AmbientLight(0xffffff,.7));
+const sun=new THREE.DirectionalLight(0xffffff,.6);sun.position.set(10,20,5);sc.add(sun);
+function box(w,h,d,c,x,y,z){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshLambertMaterial({color:c}));m.position.set(x,y,z);sc.add(m);return m}
+box(80,.2,80,0x555555,0,0,0);
+// Панелька и подъезд
+box(14,16,8,0x9a9a8a,0,8,-14);
+const door=box(2,3,.3,0x442200,0,1.5,-9.9);
+for(let i=0;i<5;i++)for(let j=-2;j<=2;j++)
+  box(1.2,1.4,.2,Math.random()<.5?0xffee88:0x223344,j*2.5,3+i*2.8,-9.9);
+// Бабки на лавочках
+const babki=[];
+function babka(x,z){const g=new THREE.Group();
+  const b=new THREE.Mesh(new THREE.CylinderGeometry(.4,.5,1.2),new THREE.MeshLambertMaterial({color:0x883366}));b.position.y=.8;
+  const h=new THREE.Mesh(new THREE.SphereGeometry(.3),new THREE.MeshLambertMaterial({color:0xeeccaa}));h.position.y=1.6;
+  const e=new THREE.Mesh(new THREE.BoxGeometry(.3,.08,.1),new THREE.MeshLambertMaterial({color:0x000000}));e.position.set(0,1.65,.3);
+  g.add(b,h,e);g.position.set(x,0,z);sc.add(g);babki.push(g)}
+[-3,-2,2,3].forEach(x=>{box(1.6,.4,.7,0x664422,x,.5,-8);babka(x,-8)});
+const me=box(.8,1.8,.8,0x2288ff,0,1,8);
+// Управление пальцем
+let st=null,v={x:0,y:0};
+addEventListener('touchstart',e=>{const t=e.touches[0];st={x:t.clientX,y:t.clientY}});
+addEventListener('touchmove',e=>{if(!st)return;const t=e.touches[0];
+  v.x=Math.max(-1,Math.min(1,(t.clientX-st.x)/50));v.y=Math.max(-1,Math.min(1,(t.clientY-st.y)/50))});
+addEventListener('touchend',()=>{st=null;v.x=v.y=0});
+function say(t,ms=3500){const m=document.getElementById('msg');m.textContent=t;m.style.display='block';setTimeout(()=>m.style.display='none',ms)}
+// Случайные события
+const EV=[
+["Реклама: СКАЧАЙ МАКС! Везде. Всегда.",()=>S.nerve-=3],
+["VPN за 399₽ не подключается. Деньги списали.",()=>S.money-=399],
+["Мобильный интернет отключили.",()=>{S.net=false;setTimeout(()=>S.net=true,8000)}],
+["Сосед начал ремонт в 7 утра.",()=>S.sleep-=15],
+["В подъезде воняет сигаретами и бухлом.",()=>S.nerve-=5],
+["Цены опять выросли. Бензин, хлеб, всё.",()=>S.money-=300],
+["За стеной шумная ночь (СЕКС СЕКС СЕКС ПОРНО СИСЬКИ ПИСЬКИ. Недосып.",()=>S.sleep-=20]];
+setInterval(()=>{const e=EV[Math.random()*EV.length|0];say(e[0]);e[1]()},9000);
+// Время: 1 игровой час = 1.5 сек
+setInterval(()=>{S.hour++;S.sleep=Math.max(0,S.sleep-0.5);
+  if(S.hour>=24){S.hour=0;S.day++;
+    if(S.day%30==0){S.money+=S.salary-S.salary/2;say('Зарплата '+S.salary+'₽. Аренда съела половину.')}}},1500);
+function loop(){requestAnimationFrame(loop);
+  me.position.x+=v.x*.15;me.position.z+=v.y*.15;
+  cam.position.set(me.position.x,9,me.position.z+12);cam.lookAt(me.position);
+  babki.forEach(b=>b.lookAt(me.position.x,0,me.position.z));
+  if(me.position.distanceTo(babki[0].position)<6)S.nerve=Math.max(0,S.nerve-.02);
+  document.getElementById('hud').textContent='День '+S.day+' '+S.hour+':00 | ₽'+Math.round(S.money)+' | Сон '+Math.round(S.sleep)+' | Нервы '+Math.round(S.nerve);
+  document.getElementById('net').textContent=S.net?'📶':'📵 нет сети';
+  R.render(sc,cam)}
+loop();
+// === КОНЕЦ ===
+</script></body></html>
+// === ЧАСТЬ 2: меню, браки, измены, дети ===
+const M=document.createElement('div');
+M.style.cssText='position:fixed;left:5%;right:5%;bottom:60px;max-height:60%;overflow:auto;background:#000d;color:#fff;padding:8px;border-radius:10px;z-index:4;display:none';
+document.body.appendChild(M);
+function menu(t,items){M.innerHTML='<b>'+t+'</b>';M.style.display='block';
+  items.concat([['Закрыть',()=>{}]]).forEach(a=>{
+    const b=document.createElement('button');b.textContent=a[0];
+    b.style.cssText='display:block;width:100%;margin:4px 0;padding:10px;font-size:15px';
+    b.onclick=()=>{M.style.display='none';a[1]()};M.appendChild(b)})}
+const ACTS=[];
+const mb=document.createElement('button');mb.textContent='☰ Меню';
+mb.style.cssText='position:fixed;left:6px;top:40px;z-index:5;font-size:16px;padding:6px 12px';
+document.body.appendChild(mb);
+mb.onclick=()=>menu('Что делаем?',ACTS);
+const DAYF=[];let ld=S.day;
+setInterval(()=>{while(ld<S.day){ld++;DAYF.forEach(f=>f())}},500);
+let end=0;
+function over(t){if(end)return;end=1;say(t,6000);setTimeout(()=>location.reload(),6500)}
+Object.assign(S,{partner:false,sus:0,kids:[]});
+ACTS.push(['❤️ Завести пару',()=>{
+  if(S.partner)return say('Пара уже есть');
+  S.partner=true;S.sus=0;say('У вас отношения. Пока всё мило.')}]);
+ACTS.push(['💍 Свадьба (50 000₽)',()=>{
+  if(!S.partner)return say('Сначала найди пару');
+  if(S.married)return say('Вы уже в браке');
+  if(S.money<50000)return say('На свадьбу не хватает денег');
+  S.money-=50000;S.married=true;say('Свадьба! Теперь ещё и тёща.')}]);
+ACTS.push(['😏 Измена',()=>{
+  if(!S.partner)return say('Изменять некому, ты один');
+  S.nerve=Math.min(100,S.nerve+10);S.sleep-=10;S.sus+=15;
+  if(Math.random()*100<25+S.sus){
+    if(S.married){S.money=Math.floor(S.money/2);S.married=false;say('Поймали! Развод, половина денег ушла.',5000)}
+    else say('Поймали! Расстались.');
+    S.partner=false;S.sus=0;
+  }else say('Не спалился. Пока.')}]);
+ACTS.push(['👶 Завести ребёнка (20 000₽)',()=>{
+  if(!S.married)return say('Сначала брак');
+  if(S.money<20000)return say('Коляска и памперсы дороже, чем кажется');
+  S.money-=20000;const g=Math.random()<.5?'дочь':'сын';
+  S.kids.push({g:g,born:S.day,age:0,ev:false});say('Родился ребёнок: '+g+'!')}]);
+DAYF.push(()=>{
+  S.kids.forEach(k=>{
+    k.age=Math.floor((S.day-k.born)/20);
+    if(k.age>=18&&!k.ev){k.ev=true;const r=Math.random();
+      if(k.g=='дочь'){
+        if(r<.35){S.nerve-=15;S.money-=5000;say('Парень дочери сел по 228. Она теперь ждуля, ты носишь передачки.',6000)}
+        else if(r<.7){S.nerve-=10;say('Дочь улетела на Бали, запустила онлик и ютуб-канал. Соседи в курсе.',6000)}
+        else say('Дочь выросла и съехала. Редкая удача.')
+      }else say('Сыну 18. Повестка пришла быстрее поздравлений.',5000)}});
+  if(S.kids.length)S.money-=150*S.kids.length});
+  // === ЧАСТЬ 3: цены, еда, бензин, жильё, машины ===
+Object.assign(S,{inf:1,food:3,home:0,car:0});
+const HOMES=[['Съёмная конура',0],['Студия на выселках',9500000],['Однушка в центре',48000000],['Пентхаус с видом',390000000]];
+const CARS=[['Пешком',0],['Б/у «Жигуль»',2300000],['Китайский кроссовер',6900000],['Немецкий седан',17000000]];
+const price=p=>Math.round(p*S.inf);
+const fmt=n=>Math.round(n).toLocaleString('ru-RU')+'₽';
+DAYF.push(()=>{
+  S.inf*=1.004;S.food--;
+  if(S.food<0){S.nerve-=8;S.sleep-=5;say('Холодильник пуст. Голодно и нервно.')}
+  if(S.car>0)S.money-=price(250*S.car); // бензин каждый день
+  if(S.home>0&&S.day%30==0)S.money+=S.salary/2; // аренда не нужна
+});
+ACTS.push(['🛒 Продукты на неделю',()=>{
+  const p=price(3500);
+  if(S.money<p)return say('На продукты не хватает: '+fmt(p));
+  S.money-=p;S.food+=7;say('Хлеб, молоко, сыр как золото. Итого '+fmt(p))}]);
+ACTS.push(['📈 Цены сегодня',()=>say(
+  'Бензин '+price(95)+'₽/л, хлеб '+price(60)+'₽, студия '+fmt(price(9500000))+', машина от '+fmt(price(2300000)),6000)]);
+function buyMenu(t,L,key){
+  menu(t,L.map((x,i)=>[x[0]+' — '+fmt(price(x[1])),()=>{
+    if(i<=S[key])return say('У тебя уже не хуже');
+    if(S.money<price(x[1]))return say('Заоблачно. Нужно '+fmt(price(x[1])));
+    S.money-=price(x[1]);S[key]=i;say('Куплено: '+x[0])}]))}
+ACTS.push(['🏠 Недвижимость',()=>buyMenu('Недвижимость',HOMES,'home')]);
+ACTS.push(['🚗 Машины',()=>buyMenu('Машины',CARS,'car')]);
+// === ЧАСТЬ 4: казино и клубы ===
+function slots(sum){
+  if(sum<=0||S.money<sum)return say('Нет денег на ставку');
+  S.money-=sum;const E=['🍒','🍋','7️⃣','💎'];
+  const r=[0,0,0].map(()=>E[Math.random()*4|0]);
+  const u=new Set(r).size;let w=0;
+  if(u==1)w=sum*10;else if(u==2)w=Math.round(sum*.5);
+  S.money+=w;if(w<sum)S.nerve-=3;
+  say(r.join(' ')+(w>sum?'  ВЫИГРЫШ '+fmt(w):'  Казино всегда в плюсе'))}
+function rul(sum){
+  if(sum<=0||S.money<sum)return say('Нет денег на ставку');
+  S.money-=sum;
+  if(Math.random()<.47){S.money+=sum*2;say('Красное! +'+fmt(sum))}
+  else{S.nerve-=5;say('Зеро или чёрное. Минус '+fmt(sum))}}
+ACTS.push(['🎰 Казино',()=>menu('Казино',[
+  ['Слоты 1 000₽',()=>slots(1000)],
+  ['Слоты 10 000₽',()=>slots(10000)],
+  ['Рулетка 5 000₽',()=>rul(5000)],
+  ['Рулетка ВА-БАНК',()=>rul(Math.floor(S.money))]])]);
+const CLUBS=[['🎧 Рейв в подвале',2000,25,15],['🎤 Караоке-бар',3500,15,12],
+  ['🍸 Ночной клуб',8000,20,20],['👑 VIP-клуб',60000,25,35],['🪩 Дискотека 90-х',1500,15,10]];
+ACTS.push(['🪩 Клубы',()=>menu('Куда идём?',CLUBS.map(c=>[c[0]+' — '+fmt(price(c[1])),()=>{
+  const p=price(c[1]);
+  if(S.money<p)return say('Фейсконтроль: денег нет');
+  S.money-=p;S.sleep-=c[2];S.nerve=Math.min(100,S.nerve+c[3]);
+  if(S.partner)S.sus+=8;
+  say(c[0]+': вечер удался, наутро голова болит'+(S.partner?'. Партнёр видел сторис.':''))}]))]);
+  // === ЧАСТЬ 5: виза, слежка, VPN ===
+Object.assign(S,{docs:0,visa:false,watched:false,vsub:false,vpn:false});
+const VPNT=600000; // VPN отваливается через 10 минут
+const DOCS=['Справка с работы','Выписка из банка','Справка о несудимости','Анализ крови',
+ 'Анализ мочи','Флюорография','Копия паспорта (заверенная)','Фото 3,5×4,5 на матовой',
+ 'Выписка из домовой книги','Справка из ЖЭК','Анкета на 14 страниц','Приглашение с апостилем'];
+const vp=document.createElement('div');
+vp.style.cssText='position:fixed;top:60px;right:6px;color:#fff;z-index:2;font-size:13px';
+document.body.appendChild(vp);
+setInterval(()=>{vp.textContent=(S.vpn?'🔒 VPN':'🔓 без VPN')+(S.watched?' | 👁 слежка':'')},500);
+ACTS.push(['🛂 Виза',()=>menu('Виза: документов '+S.docs+'/'+DOCS.length,[
+ ['📄 Собрать: '+(DOCS[S.docs]||'всё готово')+' ('+fmt(price(1500))+')',()=>{
+   if(S.docs>=DOCS.length)return say('Все бумаги собраны. Подавай!');
+   if(S.money<price(1500))return say('Нет денег на справку');
+   S.money-=price(1500);S.docs++;S.sleep-=8;S.nerve-=4;
+   say('Очередь 6 часов. Готово: '+DOCS[S.docs-1])}],
+ ['📨 Подать на визу',()=>{
+   if(S.docs<DOCS.length)return say('Не хватает бумаг. Стопка ещё не высокая');
+   S.docs=Math.floor(DOCS.length/2);
+   if(Math.random()<.25){S.visa=true;S.watched=true;say('Виза одобрена! За тобой теперь следят 24/7.',5000)}
+   else say('Отказ без объяснений. Половину бумаг переделывать.',5000)}],
+ ['✈️ Поехать по визе ('+fmt(price(250000))+')',()=>{
+   if(!S.visa)return say('Без визы не пустят');
+   if(S.money<price(250000))return say('Билеты заоблачные');
+   S.money-=price(250000);S.nerve=Math.min(100,S.nerve+40);say('Отдых! Но фото ушло куда надо.')}],
+ ['🇰🇵 В КНДР без визы',()=>over('Добро пожаловать в КНДР! Визу не просили. Обратно не просили тоже. КОНЕЦ.')]])]);
+const SPY=['Мужик в сером «случайно» идёт за тобой.','Телефон щёлкает. Это не помехи.',
+ 'Сосед странно интересуется твоими поездками.','В чате появился «новый друг» с вопросами.'];
+setInterval(()=>{if(S.watched){S.nerve-=3;say('👁 '+SPY[Math.random()*SPY.length|0])}},30000);
+ACTS.push(['🔒 VPN',()=>menu('VPN (399₽/мес)',[
+ ['Купить подписку',()=>{
+   if(S.vsub)return say('Подписка уже есть');
+   S.money-=399;S.vsub=true;say('Оплачено 399₽. Работает ли — вопрос.')}],
+ ['Подключиться',()=>{
+   if(!S.vsub)return say('Сначала купи подписку');
+   if(!S.net)return say('Нет мобильного интернета. VPN не подключить.');
+   if(Math.random()<.5)return say('VPN: «Подключение...» и так вечно.');
+   S.vpn=true;say('VPN подключён. Ненадолго.');
+   setTimeout(()=>{S.vpn=false;say('VPN отвалился. Опять.')},VPNT)}]])]);
+DAYF.push(()=>{if(S.vsub&&S.day%30==0)S.money-=399});
+setInterval(()=>{S.net=false;S.vpn=false;setTimeout(()=>S.net=true,10000)},60000);
+// === ЧАСТЬ 6: подъезд, бабки, соседи, реклама ===
+const bomj=box(1.6,.4,.7,0x5a3a1a,0,.4,-9.3);bomj.visible=false;
+const kuchka=box(.4,.2,.4,0x3b2a14,1.1,.2,-9.2);kuchka.visible=false;
+DAYF.push(()=>{
+  if(S.day%7==1&&S.nerve<70&&Math.random()<.7){
+    bomj.visible=kuchka.visible=true;
+    say('Понедельник. Под дверью насрали, а бомж спит на лестничной клетке.',6000)}});
+ACTS.push(['🧹 Убрать подъезд (2 000₽)',()=>{
+  if(!bomj.visible)return say('Тут пока чисто. Запах остался.');
+  if(S.money<price(2000))return say('Нет денег на клининг');
+  S.money-=price(2000);S.nerve-=5;bomj.visible=kuchka.visible=false;say('Убрано. До следующего понедельника.')}]);
+ACTS.push(['😴 Спать',()=>{
+  S.sleep=Math.min(100,S.sleep+(Math.random()<.5?30:60));say('Лёг спать... надеюсь, соседи не начнут.')}]);
+ACTS.push(['💼 Подработка +1 500₽',()=>{
+  S.money+=1500;S.sleep-=10;S.nerve-=3;say('Смена закрыта. Копейки.')}]);
+let bd=0;
+setInterval(()=>{
+  const on=S.hour>=6&&S.hour<22;babki.forEach(b=>b.visible=on);
+  if(S.hour==6&&bd!=S.day){bd=S.day;S.nerve-=4;
+    say('6:00. Бабки уже на лавочке: провожают взглядом и шушукаются.')}
+  if(me.position.z<-6)S.nerve=Math.max(0,S.nerve-.5); // вонь в подъезде
+},500);
+const NB=['За стеной у соседей жаркая ночь. Не уснуть.','Сосед включил перфоратор. В 2 часа ночи.',
+ 'Наверху то ли оргия, то ли двигают мебель.','Соседи затеяли ремонт. Опять.'];
+setInterval(()=>{if(S.hour>=23||S.hour<6){S.sleep-=12;say('🔊 '+NB[Math.random()*NB.length|0])}},20000);
+const ad=document.createElement('div');
+ad.style.cssText='position:fixed;left:10%;right:10%;top:25%;background:#07f;color:#fff;padding:24px 12px;text-align:center;font-size:22px;font-weight:bold;border-radius:12px;z-index:9;display:none';
+ad.innerHTML='СКАЧАЙ МАКС!<br><small>быстро, удобно, обязательно</small><br><button id="adx" style="margin-top:12px;padding:8px 16px">Закрыть (5)</button>';
+document.body.appendChild(ad);
+const adx=document.getElementById('adx');
+adx.onclick=()=>ad.style.display='none';
+setInterval(()=>{
+  if(ad.style.display=='block')return;
+  ad.style.display='block';let n=5;adx.disabled=true;adx.textContent='Закрыть (5)';S.nerve-=2;
+  const t=setInterval(()=>{n--;adx.textContent='Закрыть ('+n+')';
+    if(n<=0){clearInterval(t);adx.disabled=false;adx.textContent='Закрыть'}},1000)},40000);
+setInterval(()=>{
+  if(S.nerve<=0)over('Нервный срыв. Ты уехал в деревню разводить кур. КОНЕЦ.');
+  else if(S.sleep<=0)over('Ты заснул на ходу. КОНЕЦ.');
+  else if(S.money<-100000)over('Коллекторы нашли тебя. КОНЕЦ.')},1000);
